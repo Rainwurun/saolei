@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>扫雷 - 吴润</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="start-screen" id="startScreen" aria-labelledby="gameTitle">
+        <div class="brand-block">
+          <p class="kicker">Web Minesweeper</p>
+          <h1 id="gameTitle">扫雷</h1>
+          <div class="meta-row">
+            <span>开发人：吴润</span>
+            <span>版本号：v1.0.0</span>
+          </div>
+        </div>
+
+        <div class="menu-panel" aria-label="开始菜单">
+          <button class="difficulty-card active" type="button" data-preset="beginner">
+            <span>初级</span>
+            <strong>9 x 9</strong>
+            <small>10 雷</small>
+          </button>
+          <button class="difficulty-card" type="button" data-preset="intermediate">
+            <span>中级</span>
+            <strong>16 x 16</strong>
+            <small>40 雷</small>
+          </button>
+          <button class="difficulty-card" type="button" data-preset="expert">
+            <span>高级</span>
+            <strong>30 x 16</strong>
+            <small>99 雷</small>
+          </button>
+
+          <div class="custom-box">
+            <div class="custom-header">
+              <span>自定义</span>
+              <label class="switch">
+                <input id="customToggle" type="checkbox" />
+                <span></span>
+              </label>
+            </div>
+            <div class="custom-grid">
+              <label>
+                行
+                <input id="rowsInput" type="number" min="8" max="24" value="12" disabled />
+              </label>
+              <label>
+                列
+                <input id="colsInput" type="number" min="8" max="32" value="18" disabled />
+              </label>
+              <label>
+                雷
+                <input id="minesInput" type="number" min="10" max="180" value="36" disabled />
+              </label>
+            </div>
+          </div>
+
+          <button class="primary-action" id="startButton" type="button">开始游戏</button>
+        </div>
+      </section>
+
+      <section class="game-screen hidden" id="gameScreen" aria-label="扫雷游戏">
+        <header class="topbar">
+          <button class="ghost-button" id="menuButton" type="button" aria-label="返回菜单">菜单</button>
+          <div class="status-strip">
+            <div>
+              <span>雷数</span>
+              <strong id="mineCounter">010</strong>
+            </div>
+            <button class="reset-button" id="resetButton" type="button" aria-label="重新开始">🙂</button>
+            <div>
+              <span>时间</span>
+              <strong id="timer">000</strong>
+            </div>
+          </div>
+          <button class="ghost-button" id="newButton" type="button" aria-label="新开一局">新局</button>
+        </header>
+
+        <div class="message-line" id="messageLine">点击任意格开始</div>
+        <div class="board-wrap">
+          <div class="board" id="board" role="grid" aria-label="扫雷棋盘"></div>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
