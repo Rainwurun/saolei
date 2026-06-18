@@ -16,6 +16,16 @@ const state = {
   seconds: 0,
   timerId: null,
   activePreset: "beginner",
+  fairMode: true,
+  fairGenerated: false,
+  hintsEnabled: true,
+  hintsLeft: 3,
+  hintsUsed: 0,
+  combo: 0,
+  maxCombo: 0,
+  score: 0,
+  moves: 0,
+  lastActionAt: 0,
 };
 
 const els = {
@@ -30,9 +40,19 @@ const els = {
   menuButton: document.querySelector("#menuButton"),
   newButton: document.querySelector("#newButton"),
   customToggle: document.querySelector("#customToggle"),
+  fairModeToggle: document.querySelector("#fairModeToggle"),
+  hintToggle: document.querySelector("#hintToggle"),
   rowsInput: document.querySelector("#rowsInput"),
   colsInput: document.querySelector("#colsInput"),
   minesInput: document.querySelector("#minesInput"),
+  hintButton: document.querySelector("#hintButton"),
+  hintCount: document.querySelector("#hintCount"),
+  modeLabel: document.querySelector("#modeLabel"),
+  comboLabel: document.querySelector("#comboLabel"),
+  scoreLabel: document.querySelector("#scoreLabel"),
+  resultPanel: document.querySelector("#resultPanel"),
+  rankLabel: document.querySelector("#rankLabel"),
+  resultText: document.querySelector("#resultText"),
   presetButtons: [...document.querySelectorAll("[data-preset]")],
 };
 
@@ -47,6 +67,15 @@ function setMessage(text) {
 function updateCounters() {
   els.mineCounter.textContent = formatNumber(state.mines - state.flags);
   els.timer.textContent = formatNumber(state.seconds);
+  updateHud();
+}
+
+function updateHud() {
+  els.hintCount.textContent = state.hintsLeft;
+  els.comboLabel.textContent = `x${state.combo}`;
+  els.scoreLabel.textContent = Math.max(0, Math.round(state.score));
+  els.modeLabel.textContent = state.fairMode ? (state.started && !state.fairGenerated ? "挑战" : "公平") : "经典";
+  els.hintButton.disabled = state.over || !state.hintsEnabled || state.hintsLeft <= 0;
 }
 
 function startTimer() {
@@ -110,24 +139,116 @@ function safeZoneFor(firstIndex) {
   return new Set([firstIndex, ...neighborsOf(firstIndex)]);
 }
 
-function placeMines(firstIndex) {
+function shuffle(items) {
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+}
+
+function clearMines() {
+  state.cells.forEach((cell) => {
+    cell.mine = false;
+    cell.adjacent = 0;
+  });
+}
+
+function calculateAdjacency() {
+  state.cells.forEach((cell) => {
+    cell.adjacent = neighborsOf(cell.index).filter((index) => state.cells[index].mine).length;
+  });
+}
+
+function placeMinesRandom(firstIndex) {
+  clearMines();
   const safeZone = safeZoneFor(firstIndex);
   const candidates = state.cells
     .map((cell) => cell.index)
     .filter((index) => !safeZone.has(index));
 
-  for (let i = candidates.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-  }
-
+  shuffle(candidates);
   candidates.slice(0, state.mines).forEach((index) => {
     state.cells[index].mine = true;
   });
+  calculateAdjacency();
+}
 
-  state.cells.forEach((cell) => {
-    cell.adjacent = neighborsOf(cell.index).filter((index) => state.cells[index].mine).length;
+function collectRevealedFrom(index, openedSet) {
+  const cell = state.cells[index];
+  if (openedSet.has(index) || cell.mine) return;
+  openedSet.add(index);
+  if (cell.adjacent !== 0) return;
+
+  const queue = [index];
+  while (queue.length) {
+    const current = queue.shift();
+    neighborsOf(current).forEach((neighborIndex) => {
+      const neighbor = state.cells[neighborIndex];
+      if (openedSet.has(neighborIndex) || neighbor.mine) return;
+      openedSet.add(neighborIndex);
+      if (neighbor.adjacent === 0) queue.push(neighborIndex);
+    });
+  }
+}
+
+function basicDeductions(openedSet, flaggedSet) {
+  const safe = new Set();
+  const mines = new Set();
+  openedSet.forEach((index) => {
+    const cell = state.cells[index];
+    if (cell.mine || cell.adjacent === 0) return;
+    const neighbors = neighborsOf(index);
+    const hidden = neighbors.filter((neighborIndex) => !openedSet.has(neighborIndex) && !flaggedSet.has(neighborIndex));
+    const flags = neighbors.filter((neighborIndex) => flaggedSet.has(neighborIndex)).length;
+    const remaining = cell.adjacent - flags;
+
+    if (remaining === 0) hidden.forEach((neighborIndex) => safe.add(neighborIndex));
+    if (remaining === hidden.length) hidden.forEach((neighborIndex) => mines.add(neighborIndex));
   });
+  return { safe, mines };
+}
+
+function canSolveWithBasicLogic(firstIndex) {
+  const openedSet = new Set();
+  const flaggedSet = new Set();
+  collectRevealedFrom(firstIndex, openedSet);
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const { safe, mines } = basicDeductions(openedSet, flaggedSet);
+
+    mines.forEach((index) => {
+      if (!flaggedSet.has(index)) {
+        flaggedSet.add(index);
+        changed = true;
+      }
+    });
+
+    safe.forEach((index) => {
+      if (!openedSet.has(index) && !state.cells[index].mine) {
+        collectRevealedFrom(index, openedSet);
+        changed = true;
+      }
+    });
+  }
+
+  return openedSet.size === state.rows * state.cols - state.mines;
+}
+
+function placeMines(firstIndex) {
+  state.fairGenerated = false;
+  const attempts = state.fairMode ? (state.rows * state.cols > 300 ? 35 : 90) : 1;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    placeMinesRandom(firstIndex);
+    if (!state.fairMode || canSolveWithBasicLogic(firstIndex)) {
+      state.fairGenerated = state.fairMode;
+      return;
+    }
+  }
+
+  placeMinesRandom(firstIndex);
 }
 
 function resetGame(config = getCurrentConfig()) {
@@ -141,6 +262,17 @@ function resetGame(config = getCurrentConfig()) {
   state.flags = 0;
   state.opened = 0;
   state.seconds = 0;
+  state.fairMode = els.fairModeToggle.checked;
+  state.fairGenerated = false;
+  state.hintsEnabled = els.hintToggle.checked;
+  state.hintsLeft = state.hintsEnabled ? 3 : 0;
+  state.hintsUsed = 0;
+  state.combo = 0;
+  state.maxCombo = 0;
+  state.score = 0;
+  state.moves = 0;
+  state.lastActionAt = 0;
+  els.resultPanel.classList.add("hidden");
   makeCells();
   renderBoard();
   updateCounters();
@@ -198,8 +330,16 @@ function renderBoard() {
   });
 }
 
+function clearHintMarks() {
+  [...els.board.children].forEach((button) => {
+    button.classList.remove("hint-safe", "hint-mine");
+  });
+}
+
 function paintCell(cell) {
   const button = els.board.children[cell.index];
+  const hintedSafe = button.classList.contains("hint-safe");
+  const hintedMine = button.classList.contains("hint-mine");
   button.className = "cell";
   button.textContent = "";
 
@@ -219,14 +359,29 @@ function paintCell(cell) {
     button.classList.add("flagged");
     button.textContent = "⚑";
   }
+
+  if (hintedSafe) button.classList.add("hint-safe");
+  if (hintedMine) button.classList.add("hint-mine");
 }
 
 function paintBoard() {
   state.cells.forEach(paintCell);
 }
 
+function rewardMove(openedDelta) {
+  if (openedDelta <= 0) return;
+  const now = Date.now();
+  state.combo = now - state.lastActionAt <= 4200 ? state.combo + 1 : 1;
+  state.maxCombo = Math.max(state.maxCombo, state.combo);
+  state.lastActionAt = now;
+  state.moves += 1;
+  state.score += openedDelta * 10 + state.combo * 6;
+  updateHud();
+}
+
 function openCell(index) {
   if (state.over) return;
+  clearHintMarks();
   const cell = state.cells[index];
   if (cell.flagged) return;
 
@@ -234,7 +389,7 @@ function openCell(index) {
     state.started = true;
     placeMines(index);
     startTimer();
-    setMessage("扫雷进行中");
+    setMessage(state.fairMode && state.fairGenerated ? "公平盘已生成" : "扫雷进行中");
   }
 
   if (cell.open && cell.adjacent > 0) {
@@ -247,7 +402,9 @@ function openCell(index) {
     return;
   }
 
+  const before = state.opened;
   reveal(index);
+  rewardMove(state.opened - before);
   paintBoard();
   checkWin();
 }
@@ -287,27 +444,115 @@ function chordOpen(index) {
     }
   }
 
+  const before = state.opened;
   neighbors.forEach((neighborIndex) => {
     const neighbor = state.cells[neighborIndex];
     if (!neighbor.open && !neighbor.flagged) reveal(neighborIndex);
   });
+  rewardMove(state.opened - before);
   paintBoard();
   checkWin();
 }
 
 function toggleFlag(index) {
   if (state.over) return;
+  clearHintMarks();
   const cell = state.cells[index];
   if (cell.open) return;
   cell.flagged = !cell.flagged;
   state.flags += cell.flagged ? 1 : -1;
+
+  if (state.started && cell.flagged) {
+    state.moves += 1;
+    state.score += cell.mine ? 18 : -12;
+  }
+
   paintCell(cell);
   updateCounters();
+}
+
+function currentDeductions() {
+  const openedSet = new Set(state.cells.filter((cell) => cell.open).map((cell) => cell.index));
+  const flaggedSet = new Set(state.cells.filter((cell) => cell.flagged).map((cell) => cell.index));
+  const deductions = basicDeductions(openedSet, flaggedSet);
+  return {
+    safe: [...deductions.safe].filter((index) => !state.cells[index].open && !state.cells[index].flagged),
+    mines: [...deductions.mines].filter((index) => !state.cells[index].open && !state.cells[index].flagged),
+  };
+}
+
+function useHint() {
+  if (state.over || !state.hintsEnabled || state.hintsLeft <= 0) return;
+  clearHintMarks();
+
+  if (!state.started) {
+    setMessage("先点击一格，再使用提示");
+    return;
+  }
+
+  const { safe, mines } = currentDeductions();
+  let target = null;
+  let type = "safe";
+
+  if (mines.length > 0) {
+    target = mines[0];
+    type = "mine";
+  } else if (safe.length > 0) {
+    target = safe[0];
+  } else {
+    const fallback = state.cells.find((cell) => !cell.open && !cell.flagged && !cell.mine);
+    if (fallback) target = fallback.index;
+  }
+
+  if (target === null) {
+    setMessage("当前没有可提示的格子");
+    return;
+  }
+
+  state.hintsLeft -= 1;
+  state.hintsUsed += 1;
+  state.score -= 70;
+  const button = els.board.children[target];
+  button.classList.add(type === "mine" ? "hint-mine" : "hint-safe");
+  setMessage(type === "mine" ? "橙框是确定雷，建议插旗" : "绿框是安全建议，可点击");
+  updateCounters();
+}
+
+function wrongFlagCount() {
+  return state.cells.filter((cell) => cell.flagged && !cell.mine).length;
+}
+
+function finalScore(won) {
+  const base = Math.max(0, state.score);
+  const speedBonus = won ? Math.max(0, 360 - state.seconds) * 2 : 0;
+  const fairBonus = won && state.fairGenerated ? 180 : 0;
+  const comboBonus = state.maxCombo * 18;
+  const penalty = state.hintsUsed * 90 + wrongFlagCount() * 55;
+  return Math.max(0, Math.round(base + speedBonus + fairBonus + comboBonus - penalty));
+}
+
+function rankFor(score, won) {
+  if (!won) return "D";
+  if (score >= 1800) return "S";
+  if (score >= 1200) return "A";
+  if (score >= 700) return "B";
+  return "C";
+}
+
+function showResult(won, score) {
+  const rank = rankFor(score, won);
+  els.rankLabel.textContent = rank;
+  els.resultText.textContent = won
+    ? `评分 ${score}，最高连击 x${state.maxCombo}，提示 ${state.hintsUsed} 次`
+    : `本局评分 ${score}，最高连击 x${state.maxCombo}，误旗 ${wrongFlagCount()} 个`;
+  els.resultPanel.classList.remove("hidden");
+  els.scoreLabel.textContent = score;
 }
 
 function loseGame(triggerIndex) {
   state.over = true;
   stopTimer();
+  clearHintMarks();
   els.resetButton.textContent = "😵";
   setMessage("踩到雷了，重新来一局");
 
@@ -322,14 +567,16 @@ function loseGame(triggerIndex) {
   });
 
   els.board.children[triggerIndex].classList.add("mine");
+  showResult(false, finalScore(false));
+  updateHud();
 }
 
 function checkWin() {
   if (state.opened !== state.rows * state.cols - state.mines) return;
   state.over = true;
   stopTimer();
+  clearHintMarks();
   els.resetButton.textContent = "😎";
-  setMessage(`完成！用时 ${state.seconds} 秒`);
   state.cells.forEach((cell) => {
     if (cell.mine && !cell.flagged) {
       cell.flagged = true;
@@ -337,6 +584,9 @@ function checkWin() {
       paintCell(cell);
     }
   });
+  const score = finalScore(true);
+  setMessage(`完成！用时 ${state.seconds} 秒`);
+  showResult(true, score);
   updateCounters();
 }
 
@@ -386,5 +636,6 @@ els.startButton.addEventListener("click", showGame);
 els.resetButton.addEventListener("click", () => resetGame());
 els.newButton.addEventListener("click", () => resetGame());
 els.menuButton.addEventListener("click", showMenu);
+els.hintButton.addEventListener("click", useHint);
 
 resetGame(PRESETS.beginner);

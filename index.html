@@ -14,7 +14,7 @@
           <h1 id="gameTitle">扫雷</h1>
           <div class="meta-row">
             <span>开发人：吴润</span>
-            <span>版本号：v1.0.0</span>
+            <span>版本号：v1.1.0</span>
           </div>
         </div>
 
@@ -59,6 +59,23 @@
             </div>
           </div>
 
+          <div class="feature-box">
+            <label class="feature-row">
+              <span>
+                <strong>公平模式</strong>
+                <small>首点后优先生成可逻辑推进的棋盘</small>
+              </span>
+              <input id="fairModeToggle" type="checkbox" checked />
+            </label>
+            <label class="feature-row">
+              <span>
+                <strong>智能提示</strong>
+                <small>每局 3 次，提示确定安全格或确定雷</small>
+              </span>
+              <input id="hintToggle" type="checkbox" checked />
+            </label>
+          </div>
+
           <button class="primary-action" id="startButton" type="button">开始游戏</button>
         </div>
       </section>
@@ -80,7 +97,27 @@
           <button class="ghost-button" id="newButton" type="button" aria-label="新开一局">新局</button>
         </header>
 
+        <div class="play-strip" aria-label="游戏数据">
+          <div>
+            <span>模式</span>
+            <strong id="modeLabel">公平</strong>
+          </div>
+          <button class="hint-button" id="hintButton" type="button">提示 <span id="hintCount">3</span></button>
+          <div>
+            <span>连击</span>
+            <strong id="comboLabel">x0</strong>
+          </div>
+          <div>
+            <span>评分</span>
+            <strong id="scoreLabel">0</strong>
+          </div>
+        </div>
+
         <div class="message-line" id="messageLine">点击任意格开始</div>
+        <div class="result-panel hidden" id="resultPanel" aria-live="polite">
+          <strong id="rankLabel">A</strong>
+          <span id="resultText">完成</span>
+        </div>
         <div class="board-wrap">
           <div class="board" id="board" role="grid" aria-label="扫雷棋盘"></div>
         </div>

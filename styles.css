@@ -166,6 +166,46 @@ h1 {
   padding: 16px;
 }
 
+.feature-box {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.feature-row {
+  min-height: 76px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.feature-row strong,
+.feature-row small {
+  display: block;
+}
+
+.feature-row strong {
+  color: var(--ink);
+}
+
+.feature-row small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.feature-row input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
 .custom-header {
   display: flex;
   justify-content: space-between;
@@ -340,6 +380,85 @@ h1 {
   font-weight: 800;
 }
 
+.play-strip {
+  width: min(900px, 100%);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.play-strip div,
+.hint-button,
+.result-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.play-strip div {
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+}
+
+.play-strip span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.play-strip strong {
+  font-size: 1.08rem;
+}
+
+.hint-button {
+  color: white;
+  background: var(--accent);
+  font-weight: 850;
+}
+
+.hint-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cell.hint-safe {
+  outline: 3px solid #22c55e;
+  outline-offset: -3px;
+}
+
+.cell.hint-mine {
+  outline: 3px solid var(--warn);
+  outline-offset: -3px;
+}
+
+.result-panel {
+  width: min(900px, 100%);
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 16px;
+}
+
+.result-panel strong {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #111827;
+  color: #fff;
+  font-size: 1.25rem;
+}
+
+.result-panel span {
+  color: var(--ink);
+  font-weight: 850;
+}
+
 .board-wrap {
   max-width: 100%;
   overflow: auto;
@@ -434,6 +553,11 @@ h1 {
     grid-template-columns: 1fr 1fr 1fr;
   }
 
+  .feature-box,
+  .play-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .topbar {
     grid-template-columns: 1fr;
   }
@@ -454,6 +578,11 @@ h1 {
 
 @media (max-width: 430px) {
   .custom-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-box,
+  .play-strip {
     grid-template-columns: 1fr;
   }
 
